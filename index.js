@@ -101,19 +101,41 @@ app.post("/api/users/:_id/exercises", async (req, res)=>{
 app.get("/api/users/:_id/logs", async (req, res)=>{
   try{
     const userId = req.params._id;
+    const { from, to, limit } = req.query;
+
+
     const user = await User.findById(userId);
     if(!user){
       return res.json({error: "Not found"})
     }
 
-    const userLogs = user.log;
+    let userLogs = user.log.map(logItem => ({
+      description: logItem.description,
+      duration: logItem.duration,
+      date: new Date(logItem.date).toDateString()
+    }));
 
-    let LogObj = {
+    if (from) {
+      const fromDate = new Date(from);
+      userLogs = userLogs.filter(log => new Date(log.date) >= fromDate);
+    }
+
+    if (to) {
+      const toDate = new Date(to);
+      userLogs = userLogs.filter(log => new Date(log.date) <= toDate);
+    }
+
+    if (limit) {
+      userLogs = userLogs.slice(0, parseInt(limit));
+    }
+
+    const LogObj = {
+      _id: user._id,
       username: user.username,
       count: userLogs.length,
-      _id: user._id,
       log: userLogs
-    }
+    };
+
     res.json(LogObj)
   }
   catch(err)
@@ -121,6 +143,7 @@ app.get("/api/users/:_id/logs", async (req, res)=>{
     console.log(err)
   }
 })
+
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port);
